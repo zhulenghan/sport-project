@@ -1,0 +1,9 @@
+*.idea
+node_modules
+*/back-end
+back-end
+*.clinic
+.vitepress/cache/**
+.vitepress/dist
+.vitepress/cache
+.vitepress/cache/deps

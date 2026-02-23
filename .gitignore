@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & secrets
+.env
+*.env.local
+
+# majiang (Laya Engine client)
+majiang/temp/
+majiang/library/
+majiang/local/
+majiang/release/
+majiang/bin/js/bundles/
+
+# majiang-server
+majiang-server/*.clinic
+majiang-server/.vitepress/cache/
+majiang-server/.vitepress/dist/
+
+# Logs
+*.log
+logs/

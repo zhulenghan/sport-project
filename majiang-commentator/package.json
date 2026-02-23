@@ -1,0 +1,14 @@
+{
+  "name": "majiang-commentator",
+  "version": "1.0.0",
+  "description": "麻将 AI 解说服务",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^17.3.1",
+    "ws": "^8.17.1"
+  }
+}

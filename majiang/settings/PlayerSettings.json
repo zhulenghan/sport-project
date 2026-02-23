@@ -1,0 +1,20 @@
+{
+  "resolution": {
+    "designWidth": 1334,
+    "designHeight": 750,
+    "scaleMode": "exactfit",
+    "screenMode": "horizontal"
+  },
+  "modules": {
+    "laya.d3": true,
+    "laya.ui": true,
+    "laya.physics2D": true,
+    "laya.ani": true,
+    "laya.spine": true,
+    "laya.device": true
+  },
+  "splash": {
+    "image": "",
+    "fit": "center"
+  }
+}
