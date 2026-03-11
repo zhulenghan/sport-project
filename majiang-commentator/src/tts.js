@@ -36,7 +36,7 @@ class TTS {
 
 		exec(`say -v ${voice} "${escaped}"`, (err) => {
 			if (err) {
-				console.error('[TTS] 播报失败:', err.message);
+				console.error('[TTS] Speech playback failed:', err.message);
 			}
 			this._processQueue();
 		});

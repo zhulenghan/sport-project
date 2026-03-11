@@ -15,11 +15,11 @@ class WsClient {
 
 	connect() {
 		const url = `ws://${this.host}:${this.port}?role=commentator&roomId=${this.roomId}`;
-		console.log(`[WS] 正在连接: ${url}`);
+		console.log(`[WS] Connecting: ${url}`);
 		this.ws = new WebSocket(url);
 
 		this.ws.on('open', () => {
-			console.log(`[WS] 已连接到游戏服务端，观战房间: ${this.roomId}`);
+			console.log(`[WS] Connected to game server. Watching room: ${this.roomId}`);
 		});
 
 		this.ws.on('message', (data) => {
@@ -27,17 +27,17 @@ class WsClient {
 				const event = JSON.parse(data.toString());
 				this.onEvent(event);
 			} catch (e) {
-				console.error('[WS] 消息解析失败:', e.message);
+				console.error('[WS] Failed to parse message:', e.message);
 			}
 		});
 
 		this.ws.on('close', () => {
-			console.log('[WS] 连接断开，尝试重连...');
+			console.log('[WS] Connection closed. Reconnecting...');
 			setTimeout(() => this.connect(), this.reconnectInterval);
 		});
 
 		this.ws.on('error', (err) => {
-			console.error('[WS] 连接错误:', err.message);
+			console.error('[WS] Connection error:', err.message);
 		});
 	}
 }

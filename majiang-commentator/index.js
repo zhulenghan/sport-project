@@ -15,7 +15,7 @@ const TTS = require('./src/tts');
 // 解析命令行参数
 function parseArgs() {
 	const args = process.argv.slice(2);
-	const config = { host: '127.0.0.1', port: 8082, room: null, lang: 'zh', verbose: false };
+	const config = { host: '127.0.0.1', port: 8082, room: null, lang: 'en', verbose: false };
 	for (let i = 0; i < args.length; i++) {
 		switch (args[i]) {
 			case '--room': config.room = args[++i]; break;
@@ -29,14 +29,15 @@ function parseArgs() {
 }
 
 // 关键动作判断
-const ALWAYS_COMMENT = ['startGame', 'peng', 'gang', 'win'];
+const ALWAYS_COMMENT = ['startGame', 'roomState', 'peng', 'gang', 'win'];
 function shouldComment(event, verbose) {
 	if (verbose) return true;
 	if (ALWAYS_COMMENT.includes(event.type)) return true;
 	// playCard 仅残局时解说
 	if (event.type === 'playCard') {
 		const remaining = event.gameInfo?.remainingNum;
-		return typeof remaining === 'number' && remaining < 20;
+		if (typeof remaining !== 'number') return true;
+		return remaining < 20;
 	}
 	return false;
 }
@@ -44,13 +45,13 @@ function shouldComment(event, verbose) {
 async function main() {
 	const config = parseArgs();
 	if (!config.room) {
-		console.error('请指定房间号: node index.js --room <roomId>');
+		console.error('Please specify a room id: node index.js --room <roomId>');
 		process.exit(1);
 	}
 
 	const apiKey = process.env.GEMINI_API_KEY;
 	if (!apiKey) {
-		console.error('请设置 GEMINI_API_KEY 环境变量');
+		console.error('Please set the GEMINI_API_KEY environment variable.');
 		process.exit(1);
 	}
 
@@ -59,32 +60,23 @@ async function main() {
 	const tts = new TTS(config.lang);
 	let processing = false;
 
-	console.log(`\n🀄 麻将 AI 解说系统`);
-	console.log(`   房间: ${config.room}`);
-	console.log(`   语言: ${config.lang === 'zh' ? '中文' : 'English'}`);
-	console.log(`   模式: ${config.verbose ? '全量解说 (verbose)' : '关键动作解说'}`);
-	console.log(`   服务端: ${config.host}:${config.port}\n`);
+	console.log(`\nMahjong AI Commentator`);
+	console.log(`   Room: ${config.room}`);
+	console.log(`   Language: ${config.lang === 'zh' ? 'Chinese' : 'English'}`);
+	console.log(`   Mode: ${config.verbose ? 'Verbose commentary' : 'Key-event commentary'}`);
+	console.log(`   Server: ${config.host}:${config.port}\n`);
 
 	const client = new WsClient(config.host, config.port, config.room, async (event) => {
 		// 连接确认
 		if (event.type === 'commentatorConnected') {
-			console.log(`[系统] 解说者已连接，等待游戏开始...\n`);
+			console.log(`[System] Commentator connected. Waiting for live events...\n`);
 			return;
 		}
 
-		// 开局初始化 context
-		if (event.type === 'startGame' && event.roomInfo) {
-			context.initBaseInfo(event.roomInfo);
-		}
-
-		// 如果基础信息未初始化，跳过
-		if (!context.baseInfo) {
-			console.log(`[系统] 收到事件 ${event.type}，但游戏尚未开始，跳过`);
-			return;
-		}
+		context.updateFromEvent(event);
 
 		// 记录所有事件到滑动窗口
-		context.addEvent(event);
+		context.addEvent(event, config.lang);
 
 		// 判断是否需要解说
 		if (!shouldComment(event, config.verbose)) return;
@@ -95,14 +87,14 @@ async function main() {
 
 		try {
 			const prompt = context.buildPrompt(event, config.lang);
-			console.log(`--- [${event.type}] ${context.describeEvent(event)} ---`);
+			console.log(`--- [${event.type}] ${context.describeEvent(event, config.lang)} ---`);
 			const commentary = await commentator.commentate(prompt);
 			if (commentary) {
 				console.log(`🎙️  ${commentary}\n`);
 				tts.speak(commentary);
 			}
 		} catch (e) {
-			console.error('[解说] 错误:', e.message);
+			console.error('[Commentary] Error:', e.message);
 		} finally {
 			processing = false;
 		}
