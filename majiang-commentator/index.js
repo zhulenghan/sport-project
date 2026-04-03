@@ -11,11 +11,20 @@ const WsClient = require('./src/ws-client');
 const Context = require('./src/context');
 const Commentator = require('./src/commentator');
 const TTS = require('./src/tts');
+const StateManager = require('./src/state-manager');
 
 // 解析命令行参数
 function parseArgs() {
 	const args = process.argv.slice(2);
-	const config = { host: '127.0.0.1', port: 8082, room: null, lang: 'en', verbose: false };
+	const config = {
+		host: '127.0.0.1',
+		port: 8082,
+		room: null,
+		lang: 'en',
+		verbose: true,
+		audio: false,
+		analyze: true,
+	};
 	for (let i = 0; i < args.length; i++) {
 		switch (args[i]) {
 			case '--room': config.room = args[++i]; break;
@@ -23,23 +32,18 @@ function parseArgs() {
 			case '--port': config.port = parseInt(args[++i]); break;
 			case '--lang': config.lang = args[++i]; break;
 			case '--verbose': config.verbose = true; break;
+			case '--audio': config.audio = true; break;
+			case '--llm': config.analyze = true; break;
 		}
 	}
 	return config;
 }
 
-// 关键动作判断
-const ALWAYS_COMMENT = ['startGame', 'roomState', 'peng', 'gang', 'win'];
+// 默认解说事件
+const COMMENTED_EVENTS = ['startGame', 'roomState', 'playCard', 'peng', 'gang', 'win'];
 function shouldComment(event, verbose) {
 	if (verbose) return true;
-	if (ALWAYS_COMMENT.includes(event.type)) return true;
-	// playCard 仅残局时解说
-	if (event.type === 'playCard') {
-		const remaining = event.gameInfo?.remainingNum;
-		if (typeof remaining !== 'number') return true;
-		return remaining < 20;
-	}
-	return false;
+	return COMMENTED_EVENTS.includes(event.type);
 }
 
 async function main() {
@@ -58,13 +62,57 @@ async function main() {
 	const context = new Context();
 	const commentator = new Commentator(apiKey, config.lang);
 	const tts = new TTS(config.lang);
+	const stateManager = new StateManager();
+	const pendingItems = [];
 	let processing = false;
 
 	console.log(`\nMahjong AI Commentator`);
 	console.log(`   Room: ${config.room}`);
 	console.log(`   Language: ${config.lang === 'zh' ? 'Chinese' : 'English'}`);
-	console.log(`   Mode: ${config.verbose ? 'Verbose commentary' : 'Key-event commentary'}`);
+	console.log(`   Mode: ${config.verbose ? 'Verbose template commentary' : 'Move-by-move template commentary'}`);
+	console.log(`   Audio: ${config.audio ? 'On' : 'Off'}`);
+	console.log(`   LLM Analysis: ${config.analyze ? 'On' : 'Off'}`);
 	console.log(`   Server: ${config.host}:${config.port}\n`);
+
+	async function processQueue() {
+		if (processing) return;
+		processing = true;
+
+		while (pendingItems.length > 0) {
+			const item = pendingItems.shift();
+			try {
+				console.log(`--- [${item.event.type}] ${item.eventDescription} ---`);
+
+				let commentaryParts = [item.actionLine];
+				let spokenAnalysis = '';
+				if (item.shouldAnalyze) {
+					const rawAnalysis = await commentator.commentate(item.prompt);
+					const analysis = context.finalizeAnalysis(
+						rawAnalysis,
+						config.lang,
+						'',
+					);
+					if (analysis) {
+						spokenAnalysis = analysis;
+						commentaryParts.push(analysis);
+					}
+				}
+				commentaryParts.push(item.stateLine);
+				const commentary = commentaryParts.filter(Boolean).join('\n\n').trim();
+
+				if (commentary) {
+					console.log(`🎙️  ${commentary}\n`);
+					if (config.audio && spokenAnalysis) {
+						tts.speak(spokenAnalysis);
+					}
+				}
+			} catch (e) {
+				console.error('[Commentary] Error:', e.message);
+			}
+		}
+
+		processing = false;
+	}
 
 	const client = new WsClient(config.host, config.port, config.room, async (event) => {
 		// 连接确认
@@ -74,6 +122,7 @@ async function main() {
 		}
 
 		context.updateFromEvent(event);
+		stateManager.updateFromEvent(event);
 
 		// 记录所有事件到滑动窗口
 		context.addEvent(event, config.lang);
@@ -81,23 +130,19 @@ async function main() {
 		// 判断是否需要解说
 		if (!shouldComment(event, config.verbose)) return;
 
-		// 防止并发调用 LLM
-		if (processing) return;
-		processing = true;
+		const segments = stateManager.buildEventSegments(event, config.lang);
+		const actionLine = segments.actionLine || '';
+		const stateLine = segments.stateLine || context.buildSpokenLine(event, config.lang, stateManager);
+		pendingItems.push({
+			event,
+			eventDescription: context.describeEvent(event, config.lang),
+			prompt: context.buildPrompt(event, config.lang, stateManager, segments),
+			actionLine,
+			stateLine,
+			shouldAnalyze: config.verbose && config.analyze && Boolean(actionLine),
+		});
 
-		try {
-			const prompt = context.buildPrompt(event, config.lang);
-			console.log(`--- [${event.type}] ${context.describeEvent(event, config.lang)} ---`);
-			const commentary = await commentator.commentate(prompt);
-			if (commentary) {
-				console.log(`🎙️  ${commentary}\n`);
-				tts.speak(commentary);
-			}
-		} catch (e) {
-			console.error('[Commentary] Error:', e.message);
-		} finally {
-			processing = false;
-		}
+		processQueue();
 	});
 
 	client.connect();
