@@ -19,7 +19,6 @@ Thumbs.db
 majiang/temp/
 majiang/library/
 majiang/local/
-majiang/release/
 
 # majiang-server
 majiang-server/*.clinic
