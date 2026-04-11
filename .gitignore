@@ -20,7 +20,6 @@ majiang/temp/
 majiang/library/
 majiang/local/
 majiang/release/
-majiang/bin/js/bundles/
 
 # majiang-server
 majiang-server/*.clinic
