@@ -12,6 +12,7 @@ const HackService = require("@coreServices/HackService");
 const appConfig = require("@/config/AppletsConfig")
 const prints = require("@utils/console");
 const gameEvents = require("@core/events/GameEventEmitter");
+const RoomService = require("@/core/services/RoomService");
 
 class SocketService{
 	constructor(){
@@ -56,6 +57,20 @@ class SocketService{
 				};
 				gameEvents.on('gameEvent', listener);
 				ws.send(JSON.stringify({ message: '解说者连接成功', type: 'commentatorConnected', roomId: watchRoomId }));
+				const roomInfo = RoomService.getRoomInfo(watchRoomId);
+				const gameInfo = RoomService.getGameInfo(watchRoomId);
+				if (!_.isEmpty(roomInfo) && ws.readyState === 1) {
+					ws.send(JSON.stringify({
+						message: 'Commentator synced to current room state',
+						type: 'roomState',
+						roomId: watchRoomId,
+						playerId: null,
+						data: {},
+						roomInfo,
+						gameInfo,
+						timestamp: Date.now(),
+					}));
+				}
 				ws.on('close', () => { gameEvents.removeListener('gameEvent', listener); });
 				ws.on('pong', () => { ws.isAlive = true; });
 				return;

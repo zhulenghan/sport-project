@@ -7,7 +7,7 @@ class Commentator {
 	constructor(apiKey, lang) {
 		this.lang = lang || 'zh';
 		const genAI = new GoogleGenerativeAI(apiKey);
-		this.model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+		this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 	}
 
 	/**
@@ -15,15 +15,20 @@ class Commentator {
 	 */
 	async commentate(prompt) {
 		try {
+			// console.log(`[LLM SYSTEM]\n${prompt.system}\n[/LLM SYSTEM]`);
+			// console.log(`[LLM USER]\n${prompt.user}\n[/LLM USER]`);
 			const result = await this.model.generateContent({
 				contents: [{ role: 'user', parts: [{ text: prompt.user }] }],
 				systemInstruction: { parts: [{ text: prompt.system }] },
-				generationConfig: {
-					maxOutputTokens: 150,
-					temperature: 0.9,
-				},
+				// generationConfig: {
+				// 	maxOutputTokens: 220,
+				// 	temperature: 0.7,
+				// 	topP: 0.85,
+				// },
 			});
-			return result.response.text().trim();
+			const rawText = result.response.text();
+			// console.log(`[LLM RAW]\n${rawText}\n[/LLM RAW]`);
+			return rawText.replace(/\s+/g, ' ').trim();
 		} catch (e) {
 			console.error('[LLM] 调用失败:', e.message);
 			return null;
