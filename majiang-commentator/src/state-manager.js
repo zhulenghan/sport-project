@@ -57,6 +57,21 @@ class PlayerState {
 		return `${this.getLabel(lang)} (${this.name || this.getLabel(lang)}): ${this.getHandSummary(lang)}; ${this.getMeldSummary(lang)}; ${this.getDiscardsSummary(lang)}`;
 	}
 
+	getPengSetCount() {
+		return Math.floor((this.pengCards?.length || 0) / 3);
+	}
+
+	getGangSetCount() {
+		return Math.floor((this.gangCards?.length || 0) / 4);
+	}
+
+	getCompactState(lang = 'en') {
+		if (lang === 'en') {
+			return `${this.getLabel(lang)} hand ${this.handCards.length}, peng ${this.getPengSetCount()}, gang ${this.getGangSetCount()}`;
+		}
+		return `${this.getLabel(lang)}手牌${this.handCards.length}张，碰${this.getPengSetCount()}，杠${this.getGangSetCount()}`;
+	}
+
 	hasExposedMelds() {
 		return this.pengCards.length > 0 || this.gangCards.length > 0;
 	}
@@ -223,6 +238,33 @@ class StateManager {
 		}
 	}
 
+	getPredictionScores() {
+		const scores = {};
+		this.playerOrder.forEach((playerId) => {
+			const player = this.players[playerId];
+			if (!player || (player.handCards?.length || 0) === 0) return;
+			const melds = player.getMeldAnalysis('en').count;
+			const pairs = player.getPotentialPairCount();
+			const exposed = player.getPengSetCount() + player.getGangSetCount();
+			const nearWinBonus = (player.handCards.length % 3 === 2) ? 1 : 0;
+			const score = 1 + melds * 3 + pairs * 1.5 + exposed * 2 + nearWinBonus;
+			scores[playerId] = score;
+		});
+		return scores;
+	}
+
+	getPredictedWinRateText(playerId, lang = 'en') {
+		const scores = this.getPredictionScores();
+		const total = Object.values(scores).reduce((sum, val) => sum + val, 0);
+		if (!playerId || total <= 0 || !scores[playerId]) {
+			return lang === 'en' ? 'Pred win N/A' : '预测胜率 N/A';
+		}
+		const rate = ((scores[playerId] / total) * 100).toFixed(1);
+		return lang === 'en'
+			? `Pred win ${rate}%`
+			: `预测胜率 ${rate}%`;
+	}
+
 	syncRoomInfo(roomInfo) {
 		Object.keys(roomInfo).forEach((playerId) => {
 			const state = this.ensurePlayer(playerId);
@@ -275,6 +317,9 @@ class StateManager {
 		const remainingText = typeof remaining === 'number'
 			? (lang === 'en' ? ` Tiles remaining: ${remaining}.` : ` 剩余牌 ${remaining} 张。`)
 			: '';
+		const remainingCompact = typeof remaining === 'number'
+			? (lang === 'en' ? `, ${remaining} tiles left` : `，剩余${remaining}张`)
+			: '';
 
 		if (event?.type === 'roomState' || event?.type === 'startGame') {
 			const hasVisibleHands = this.playerOrder.some((playerId) => {
@@ -282,25 +327,31 @@ class StateManager {
 				return (currentPlayer?.handCards?.length || 0) > 0;
 			});
 			if (!hasVisibleHands) {
-				return {
-					actionLine: '',
-					stateLine: lang === 'en'
-						? `Table state synced. Waiting for the next deal.${remainingText}`.trim()
-						: `牌桌状态已同步，等待下一局发牌。${remainingText}`.trim(),
-					analysisPlayer: null,
-				};
-			}
+			return {
+				actionLine: '',
+				stateLine: lang === 'en'
+					? `Table state synced. Waiting for the next deal.${remainingText}`.trim()
+					: `牌桌状态已同步，等待下一局发牌。${remainingText}`.trim(),
+				analysisPlayer: null,
+			};
+		}
 
-			const tableSummary = this.playerOrder
-				.map((playerId) => {
-					const currentPlayer = this.players[playerId];
-					if (!currentPlayer) return null;
-					return lang === 'en'
-						? `${currentPlayer.getLabel(lang)} shows ${currentPlayer.getHandSummary(lang)}. ${currentPlayer.getMeldReadSummary(lang)}`
-						: `${currentPlayer.getLabel(lang)}当前${currentPlayer.getHandSummary(lang)}。${currentPlayer.getMeldReadSummary(lang)}`;
-				})
-				.filter(Boolean)
-				.join(lang === 'en' ? '. ' : '。');
+		const scores = this.getPredictionScores();
+		const totalScore = Object.values(scores).reduce((sum, val) => sum + val, 0);
+		const tableSummary = this.playerOrder
+			.map((playerId) => {
+				const currentPlayer = this.players[playerId];
+				if (!currentPlayer) return null;
+				const rate = totalScore > 0 && scores[playerId]
+					? ((scores[playerId] / totalScore) * 100).toFixed(1)
+					: null;
+				const odds = rate ? (lang === 'en' ? ` (${rate}%)` : `（${rate}%）`) : '';
+				return lang === 'en'
+					? `${currentPlayer.getCompactState(lang)}${odds}`
+					: `${currentPlayer.getCompactState(lang)}${odds}`;
+			})
+			.filter(Boolean)
+			.join(lang === 'en' ? '; ' : '；');
 			if (!tableSummary) {
 				return {
 					actionLine: '',
@@ -308,12 +359,16 @@ class StateManager {
 						? 'Table state synced and ready for commentary.'
 						: '牌桌状态已同步，可以开始解说。',
 					analysisPlayer: null,
-				};
-			}
+			};
+		}
 			return {
 				actionLine: '',
-				stateLine: `${tableSummary}.${remainingText}`.trim(),
-				promptStateLine: `${tableSummary}.${remainingText}`.trim(),
+				stateLine: lang === 'en'
+					? `${tableSummary}${remainingCompact}.`.trim()
+					: `${tableSummary}${remainingCompact}。`.trim(),
+				promptStateLine: lang === 'en'
+					? `${tableSummary}${remainingCompact}.`.trim()
+					: `${tableSummary}${remainingCompact}。`.trim(),
 				analysisPlayer: null,
 			};
 		}
@@ -340,6 +395,7 @@ class StateManager {
 		switch (event?.type) {
 			case 'playCard': {
 				const focusPlayer = activePlayer || player;
+				const focusWinRate = this.getPredictedWinRateText(focusPlayer?.playerId, lang);
 				const actorStateLine = lang === 'en'
 					? `Now ${player.getLabel(lang)} shows ${player.getHandSummary(lang)}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${player.getHandSummary(lang)}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();
@@ -348,13 +404,14 @@ class StateManager {
 						? `${player.getLabel(lang)} throws ${_.cardName(event.data?.cardNum, lang)}.`
 						: `${player.getLabel(lang)}打出${_.cardName(event.data?.cardNum, lang)}。`,
 					stateLine: lang === 'en'
-						? `Now ${focusPlayer.getLabel(lang)} shows ${focusPlayer.getHandSummary(lang)}${activePlayerStateSuffix}.${remainingText} ${focusPlayer.getMeldReadSummary(lang)}`.trim()
-						: `现在${focusPlayer.getLabel(lang)}为${focusPlayer.getHandSummary(lang)}${activePlayerStateSuffix}。${remainingText} ${focusPlayer.getMeldReadSummary(lang)}`.trim(),
+						? `${focusPlayer.getCompactState(lang)}${remainingCompact}. ${focusWinRate}.`.trim()
+						: `现在${focusPlayer.getLabel(lang)}为${focusPlayer.getHandSummary(lang)}${activePlayerStateSuffix}。${remainingText} ${focusPlayer.getMeldReadSummary(lang)} ${focusWinRate}`.trim(),
 					promptStateLine: actorStateLine,
 					analysisPlayer: player,
 				};
 			}
 			case 'peng': {
+				const playerWinRate = this.getPredictedWinRateText(player.playerId, lang);
 				const playerStateLine = lang === 'en'
 					? `Now ${player.getLabel(lang)} shows ${handSummary}; melds: ${player.getMeldSummary(lang)}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${handSummary}；副露为${player.getMeldSummary(lang)}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();
@@ -362,12 +419,15 @@ class StateManager {
 					actionLine: lang === 'en'
 						? `${player.getLabel(lang)} calls peng on ${_.cardNames(event.data?.pengArr, lang)}.`
 						: `${player.getLabel(lang)}碰了${_.cardNames(event.data?.pengArr, lang)}。`,
-					stateLine: playerStateLine,
+					stateLine: lang === 'en'
+						? `${player.getCompactState(lang)}${remainingCompact}. ${playerWinRate}.`.trim()
+						: `${playerStateLine} ${playerWinRate}`.trim(),
 					promptStateLine: playerStateLine,
 					analysisPlayer: player,
 				};
 			}
 			case 'gang': {
+				const playerWinRate = this.getPredictedWinRateText(player.playerId, lang);
 				const playerStateLine = lang === 'en'
 					? `Now ${player.getLabel(lang)} shows ${handSummary}; melds: ${player.getMeldSummary(lang)}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${handSummary}；副露为${player.getMeldSummary(lang)}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();
@@ -375,12 +435,15 @@ class StateManager {
 					actionLine: lang === 'en'
 						? `${player.getLabel(lang)} declares gang with ${_.cardNames(event.data?.gangArr, lang)}.`
 						: `${player.getLabel(lang)}杠了${_.cardNames(event.data?.gangArr, lang)}。`,
-					stateLine: playerStateLine,
+					stateLine: lang === 'en'
+						? `${player.getCompactState(lang)}${remainingCompact}. ${playerWinRate}.`.trim()
+						: `${playerStateLine} ${playerWinRate}`.trim(),
 					promptStateLine: playerStateLine,
 					analysisPlayer: player,
 				};
 			}
 			case 'win': {
+				const playerWinRate = this.getPredictedWinRateText(player.playerId, lang);
 				const playerStateLine = lang === 'en'
 					? `${player.getLabel(lang)} now shows ${handSummary}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${handSummary}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();
@@ -388,12 +451,15 @@ class StateManager {
 					actionLine: lang === 'en'
 						? `${player.getLabel(lang)} wins the hand.`
 						: `${player.getLabel(lang)}胡牌。`,
-					stateLine: playerStateLine,
+					stateLine: lang === 'en'
+						? `${player.getCompactState(lang)}${remainingCompact}. ${playerWinRate}.`.trim()
+						: `${playerStateLine} ${playerWinRate}`.trim(),
 					promptStateLine: playerStateLine,
 					analysisPlayer: player,
 				};
 			}
 			default: {
+				const playerWinRate = this.getPredictedWinRateText(player.playerId, lang);
 				const playerStateLine = lang === 'en'
 					? `Now ${player.getLabel(lang)} shows ${handSummary}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${handSummary}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();
@@ -401,7 +467,9 @@ class StateManager {
 					actionLine: lang === 'en'
 						? `${player.getLabel(lang)} completes ${event?.type || 'the move'}.`
 						: `${player.getLabel(lang)}完成${event?.type || '当前动作'}。`,
-					stateLine: playerStateLine,
+					stateLine: lang === 'en'
+						? `${player.getCompactState(lang)}${remainingCompact}. ${playerWinRate}.`.trim()
+						: `${playerStateLine} ${playerWinRate}`.trim(),
 					promptStateLine: playerStateLine,
 					analysisPlayer: player,
 				};

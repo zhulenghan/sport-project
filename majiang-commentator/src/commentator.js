@@ -8,6 +8,7 @@ class Commentator {
 		this.lang = lang || 'zh';
 		const genAI = new GoogleGenerativeAI(apiKey);
 		this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+		this.lastErrorAt = 0;
 	}
 
 	/**
@@ -30,7 +31,7 @@ class Commentator {
 			// console.log(`[LLM RAW]\n${rawText}\n[/LLM RAW]`);
 			return rawText.replace(/\s+/g, ' ').trim();
 		} catch (e) {
-			console.error('[LLM] 调用失败:', e.message);
+			// Suppress LLM errors to keep output clean.
 			return null;
 		}
 	}

@@ -235,8 +235,9 @@ class Context {
 
 		if (lang === 'en') {
 			return {
-				system: `You are an electrifying live Mahjong commentator. 
-				Write 1 to 2 short but exciting English sentences.`,
+				system: `You are a live Mahjong commentator.
+Write exactly 1 short English sentence (max 16 words).
+Be vivid and specific.`,
 				user: `[Primary Focus]
 React mainly to the player making the move in the action line.
 
@@ -246,7 +247,8 @@ ${actionLine}
 [Upcoming State Line]
 ${stateLine}
 
-Write 1 ~ 2 short but exciting and creative sentences that describe the action and player hand`
+Write exactly 1 short sentence.
+Do not repeat either line verbatim.`
 			};
 		}
 

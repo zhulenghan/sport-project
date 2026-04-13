@@ -96,6 +96,10 @@ async function main() {
 						spokenAnalysis = analysis;
 						commentaryParts.push(analysis);
 					}
+					if (!analysis) {
+						// Hide noisy LLM failures; keep output concise.
+						spokenAnalysis = '';
+					}
 				}
 				commentaryParts.push(item.stateLine);
 				const commentary = commentaryParts.filter(Boolean).join('\n\n').trim();
