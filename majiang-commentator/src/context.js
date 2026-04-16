@@ -140,6 +140,31 @@ class Context {
 		}
 	}
 
+	buildFallbackAnalysis(event, lang = 'en') {
+		const player = this.getPlayerLabel(event?.playerId, lang);
+		const isEnglish = lang === 'en';
+		switch (event?.type) {
+			case 'playCard':
+				return isEnglish
+					? `${player} discards ${_.cardName(event?.data?.cardNum, lang)}, keeping the hand flexible.`
+					: `${player}打出${_.cardName(event?.data?.cardNum, lang)}，先保持牌型灵活。`;
+			case 'peng':
+				return isEnglish
+					? `${player} takes peng to lock in tempo and contest control of the turn.`
+					: `${player}选择碰牌，先把回合节奏抓在手里。`;
+			case 'gang':
+				return isEnglish
+					? `${player} declares gang to increase pressure and improve scoring upside.`
+					: `${player}开杠提升番型，同时继续给牌桌施压。`;
+			case 'win':
+				return isEnglish
+					? `${player} converts the setup cleanly and closes the hand.`
+					: `${player}顺势成和，稳稳收下这一局。`;
+			default:
+				return '';
+		}
+	}
+
 	finalizeCommentary(event, text, lang = 'en', fallbackText = null) {
 		const fallback = fallbackText ?? this.buildSpokenLine(event, lang);
 		if (!text) {

@@ -394,8 +394,8 @@ class StateManager {
 			: '';
 		switch (event?.type) {
 			case 'playCard': {
-				const focusPlayer = activePlayer || player;
-				const focusWinRate = this.getPredictedWinRateText(focusPlayer?.playerId, lang);
+				const focusPlayer = player;
+				const focusWinRate = this.getPredictedWinRateText(player.playerId, lang);
 				const actorStateLine = lang === 'en'
 					? `Now ${player.getLabel(lang)} shows ${player.getHandSummary(lang)}.${remainingText} ${player.getMeldReadSummary(lang)}`.trim()
 					: `现在${player.getLabel(lang)}为${player.getHandSummary(lang)}。${remainingText} ${player.getMeldReadSummary(lang)}`.trim();

@@ -81,9 +81,9 @@ async function main() {
 		while (pendingItems.length > 0) {
 			const item = pendingItems.shift();
 			try {
-				console.log(`--- [${item.event.type}] ${item.eventDescription} ---`);
+				console.log(`--- [${item.event.type}] ---`);
 
-				let commentaryParts = [item.actionLine];
+				let commentaryParts = [item.actionLine, item.stateLine];
 				let spokenAnalysis = '';
 				if (item.shouldAnalyze) {
 					const rawAnalysis = await commentator.commentate(item.prompt);
@@ -97,11 +97,14 @@ async function main() {
 						commentaryParts.push(analysis);
 					}
 					if (!analysis) {
-						// Hide noisy LLM failures; keep output concise.
-						spokenAnalysis = '';
+						// LLM 失败时回退到模板解说，避免第三段缺失。
+						const fallbackAnalysis = context.buildFallbackAnalysis(item.event, config.lang);
+						spokenAnalysis = fallbackAnalysis || '';
+						if (fallbackAnalysis) {
+							commentaryParts.push(fallbackAnalysis);
+						}
 					}
 				}
-				commentaryParts.push(item.stateLine);
 				const commentary = commentaryParts.filter(Boolean).join('\n\n').trim();
 
 				if (commentary) {
