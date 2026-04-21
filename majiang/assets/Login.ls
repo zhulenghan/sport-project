@@ -47,7 +47,7 @@
           "height": 72,
           "_mouseState": 2,
           "centerX": 0,
-          "text": "Password",
+          "text": "",
           "font": "KaiTi",
           "fontSize": 30,
           "color": "rgba(0, 0, 0, 1)",
@@ -56,6 +56,8 @@
           "letterSpacing": 0,
           "padding": "2,6,2,6",
           "skin": "res://d76b07e3-3519-4c87-845d-1b21beea75ed",
+          "type": "password",
+          "prompt": "Password",
           "promptColor": "#A9A9A9"
         },
         {
@@ -68,7 +70,7 @@
           "height": 70,
           "_mouseState": 2,
           "centerX": 0,
-          "text": "Account",
+          "text": "",
           "font": "KaiTi",
           "fontSize": 30,
           "color": "rgba(0, 0, 0, 1)",
@@ -79,17 +81,18 @@
           "letterSpacing": 0,
           "padding": "2,6,2,6",
           "skin": "res://d76b07e3-3519-4c87-845d-1b21beea75ed",
+          "prompt": "Account",
           "promptColor": "#A9A9A9"
         },
         {
           "_$id": "tnhbrlex",
           "_$type": "Image",
           "name": "login",
-          "x": 445,
-          "y": 410,
-          "width": 436,
-          "height": 202,
-          "centerX": -4,
+          "x": 463,
+          "y": 424,
+          "width": 399,
+          "height": 135,
+          "centerX": -5,
           "skin": "res://a1ef9556-2ee8-47c9-9c36-aa33f09bd456",
           "color": "#ffffff"
         }

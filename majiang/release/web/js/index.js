@@ -18,7 +18,7 @@
     let pkgs = [];
     for (let pkg of config.pkgs) {
         let path = pkg.path.length > 0 ? (pkg.path + "/") : pkg.path;
-        if (pkg.hash)
+        if (pkg.hash != null)
             Laya.URL.version[path + "fileconfig.json"] = pkg.hash;
         if (pkg.remoteUrl) {
             let remoteUrl = pkg.remoteUrl.endsWith("/") ? pkg.remoteUrl : (pkg.remoteUrl + "/");

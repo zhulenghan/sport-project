@@ -8,6 +8,8 @@
   "top": 0,
   "bottom": 0,
   "name": "Scene2D",
+  "width": 1334,
+  "height": 750,
   "_$comp": [
     {
       "_$type": "a14bacd4-ac54-4dc4-b597-c83f2d3064a4",
@@ -55,13 +57,12 @@
           "_$id": "wjce7fko",
           "_$type": "Image",
           "name": "joinRoom",
-          "x": 739,
-          "y": 68.65641451783529,
-          "width": 405,
-          "height": 470,
+          "x": 738,
+          "y": 81,
+          "width": 406,
+          "height": 460,
           "right": 190,
-          "skin": "res://f726b91c-d203-43c4-b3b1-5cd5af3643a5",
-          "useSourceSize": true,
+          "skin": "res://90242737-1e22-49ee-a299-2063386625c5",
           "color": "#ffffff"
         },
         {
@@ -69,12 +70,11 @@
           "_$type": "Image",
           "name": "createRoom",
           "x": 190,
-          "y": 81.00000000000003,
+          "y": 81,
           "width": 406,
           "height": 460,
           "left": 190,
-          "skin": "res://6beeab39-0269-454b-87e3-8f921a10af16",
-          "useSourceSize": true,
+          "skin": "res://16699cb1-b0a8-4f82-842d-d06418b2b121",
           "color": "#ffffff"
         },
         {
@@ -116,7 +116,6 @@
                   "top": 0,
                   "skin": "res://60a9086c-a9c2-4e01-a563-355c117b509e",
                   "label": "",
-                  "labelSize": 20,
                   "labelAlign": "center",
                   "labelVAlign": "middle"
                 },
@@ -148,13 +147,9 @@
                       "color": "#FFFFFF",
                       "bold": true,
                       "align": "center",
-                      "valign": "middle",
-                      "overflow": "scroll",
+                      "letterSpacing": 0,
                       "padding": "2,6,2,6",
                       "skin": "res://d76b07e3-3519-4c87-845d-1b21beea75ed",
-                      "type": "text",
-                      "maxChars": 0,
-                      "prompt": "",
                       "promptColor": "#A9A9A9"
                     }
                   ]
@@ -172,14 +167,15 @@
                   "color": "#FFFFFF",
                   "align": "center",
                   "valign": "middle",
-                  "leading": 2
+                  "leading": 2,
+                  "letterSpacing": 0
                 },
                 {
                   "_$id": "jp9shfoz",
                   "_$type": "Image",
                   "name": "joinBtn",
                   "x": 212,
-                  "y": 361.99999999999994,
+                  "y": 362,
                   "width": 362,
                   "height": 134,
                   "centerX": 0,
@@ -232,7 +228,6 @@
                   "top": 0,
                   "skin": "res://60a9086c-a9c2-4e01-a563-355c117b509e",
                   "label": "",
-                  "labelSize": 20,
                   "labelAlign": "center",
                   "labelVAlign": "middle"
                 },
@@ -254,14 +249,14 @@
                   "align": "center",
                   "valign": "middle",
                   "wordWrap": true,
-                  "padding": "0,0,0,0"
+                  "letterSpacing": 0
                 },
                 {
                   "_$id": "4xmfmrop",
                   "_$type": "Image",
                   "name": "yes",
                   "x": 755,
-                  "y": 417.51589305160786,
+                  "y": 418,
                   "width": 86,
                   "height": 42,
                   "right": 100,
