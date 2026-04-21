@@ -36,7 +36,16 @@ cd majiang-server
 docker compose up -d
 ```
 
-### 2. Start the backend server
+### 2. Initialize the database
+
+First time only — run the migration to create the database tables:
+
+```bash
+cd majiang-server
+npx sequelize-cli db:migrate
+```
+
+### 3. Start the backend server
 
 ```bash
 cd majiang-server

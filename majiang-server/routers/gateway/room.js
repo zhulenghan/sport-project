@@ -95,4 +95,19 @@ room.post("/quitRoom", async ctx =>{
 	ctx.body = response;
 });
 
+/**
+ * 获取活跃房间列表（供 AI 解说插件使用）
+ */
+room.get('/list', async ctx => {
+	const rooms = Object.entries(RoomService.rooms).map(([roomId, roomInfo]) => {
+		const players = Object.values(roomInfo);
+		return {
+			roomId,
+			playerCount: players.length,
+			players: players.map(p => ({ name: p.name, status: p.status })),
+		};
+	});
+	ctx.body = Validate.checkSuccess('获取成功', Errors.SUCCESS, HttpStatus.OK, rooms);
+});
+
 module.exports = room;
