@@ -1627,18 +1627,12 @@
      * @private
      */
     loginCallback(data) {
-      var _a3, _b2, _c;
+      var _a3, _b2;
       if (data.errCode === 0) {
         const dataManager5 = new mapManager_default();
-        const playerInfo = (_a3 = data == null ? void 0 : data.result) == null ? void 0 : _a3.playerInfo;
-        dataManager5.setData("gameServerInfo", (_b2 = data == null ? void 0 : data.result) == null ? void 0 : _b2.gameServerInfo);
-        dataManager5.setData("userInfo", (_c = data == null ? void 0 : data.result) == null ? void 0 : _c.userInfo);
-        dataManager5.setData("playerInfo", playerInfo);
-        if (playerInfo && (playerInfo == null ? void 0 : playerInfo.playerStatus) >= 2) {
-          Laya.Scene.open("Hall.ls", false, "oldPlayer");
-        } else {
-          Laya.Scene.open("Hall.ls");
-        }
+        dataManager5.setData("gameServerInfo", (_a3 = data == null ? void 0 : data.result) == null ? void 0 : _a3.gameServerInfo);
+        dataManager5.setData("userInfo", (_b2 = data == null ? void 0 : data.result) == null ? void 0 : _b2.userInfo);
+        Laya.Scene.open("Hall.ls");
       }
     }
     //每帧更新时执行，尽量不要在这里写大循环逻辑或者使用getComponent方法

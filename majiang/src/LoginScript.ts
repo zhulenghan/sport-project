@@ -56,15 +56,9 @@ export class Script extends Laya.Script {
 	public loginCallback(data: any): any{
 		if(data.errCode === 0){
 			const dataManager = new mapManager();
-			const playerInfo = data?.result?.playerInfo;
 			dataManager.setData('gameServerInfo', data?.result?.gameServerInfo);
 			dataManager.setData('userInfo',data?.result?.userInfo);
-			dataManager.setData('playerInfo',playerInfo);
-			if(playerInfo && playerInfo?.playerStatus >= 2) { // 判断玩家是否在房间中，如果在游戏中，则直接回到牌桌
-				Laya.Scene.open("Hall.ls", false, "oldPlayer");
-			} else { // 玩家不在游戏中，进入游戏大厅
-				Laya.Scene.open("Hall.ls");
-			}
+			Laya.Scene.open("Hall.ls");
 		}
 	}
 	

@@ -13,6 +13,7 @@ const appConfig = require("@/config/AppletsConfig")
 const prints = require("@utils/console");
 const gameEvents = require("@core/events/GameEventEmitter");
 const RoomService = require("@/core/services/RoomService");
+const PlayerService = require("@/core/services/PlayerService");
 
 class SocketService{
 	constructor(){
@@ -144,9 +145,11 @@ class SocketService{
 	 * @param userId
 	 * @returns {Promise<void>}
 	 */
-	async onCloseHandle(e,userId){
-		console.log("------------------onCloseHandle---------------------")
-		// 不做操作，等待客户断线重连，重连失败，则客户端AI会完成牌局
+	async onCloseHandle(e, userId){
+		if (!userId) return;
+		const roomId = PlayerService.getRoomId(userId);
+		if (!roomId) return;
+		RoomService.quitRoom(roomId, userId);
 	}
 
 	/**
