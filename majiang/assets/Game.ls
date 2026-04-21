@@ -281,51 +281,6 @@
           ]
         },
         {
-          "_$id": "l0z9wxl3",
-          "_$type": "Image",
-          "name": "remainingBg2",
-          "x": 752,
-          "y": 355,
-          "width": 161,
-          "height": 41,
-          "centerY": 0,
-          "skin": "res://712c4e72-f7e5-44c3-86b3-87ac4794eb9b",
-          "useSourceSize": true,
-          "color": "#ffffff",
-          "_$child": [
-            {
-              "_$id": "bo6w0nz9",
-              "_$type": "Image",
-              "name": "Image",
-              "x": 26,
-              "y": 7,
-              "width": 123,
-              "height": 25,
-              "centerX": 7,
-              "centerY": -1,
-              "skin": "res://714f6bbf-a658-4849-9cbf-dfbf979a02bc",
-              "useSourceSize": true,
-              "color": "#ffffff"
-            },
-            {
-              "_$id": "a9chaln5",
-              "_$type": "Label",
-              "name": "Label",
-              "x": -10,
-              "y": 1,
-              "width": 65,
-              "height": 40,
-              "text": "0",
-              "font": "MicrosoftYaHei",
-              "fontSize": 26,
-              "color": "rgba(181, 254, 80, 1)",
-              "align": "center",
-              "valign": "middle",
-              "letterSpacing": 0
-            }
-          ]
-        },
-        {
           "_$id": "u2y1yagb",
           "_$type": "Sprite",
           "name": "playedCards0",
