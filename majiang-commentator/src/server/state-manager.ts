@@ -1,4 +1,5 @@
 import * as utils from './utils';
+import { getShantenNumber, shantenText } from './shanten';
 import type { GameEvent, Lang, RoomPlayer, EventSegments } from './types';
 
 export class PlayerState {
@@ -23,8 +24,8 @@ export class PlayerState {
     this.gangCards = utils.sortCards(p.gangCards ?? []);
   }
 
-  getLabel(lang: Lang = 'en'): string {
-    return lang === 'en' ? `Player ${this.seat}` : `玩家${this.seat}`;
+  getLabel(_lang: Lang = 'en'): string {
+    return this.name ?? `Player ${this.seat}`;
   }
 
   getHandSummary(lang: Lang = 'en'): string {
@@ -50,6 +51,12 @@ export class PlayerState {
 
   getPengSetCount(): number { return Math.floor((this.pengCards?.length ?? 0) / 3); }
   getGangSetCount(): number { return Math.floor((this.gangCards?.length ?? 0) / 4); }
+
+  getShantenText(lang: Lang = 'en'): string {
+    if (this.handCards.length === 0) return lang === 'en' ? 'Pred win N/A' : '预测胜率 N/A';
+    const shanten = getShantenNumber(this.handCards);
+    return shantenText(shanten, lang);
+  }
 
   getCompactState(lang: Lang = 'en'): string {
     return lang === 'en'
@@ -172,26 +179,11 @@ export class StateManager {
     if (event.roomInfo && typeof event.roomInfo === 'object') this.syncRoomInfo(event.roomInfo);
   }
 
-  getPredictionScores(): Record<string, number> {
-    const scores: Record<string, number> = {};
-    this.playerOrder.forEach((pid) => {
-      const player = this.players[pid];
-      if (!player || (player.handCards?.length ?? 0) === 0) return;
-      const melds = player.getMeldAnalysis('en').count;
-      const pairs = player.getPotentialPairCount();
-      const exposed = player.getPengSetCount() + player.getGangSetCount();
-      const nearWinBonus = (player.handCards.length % 3 === 2) ? 1 : 0;
-      scores[pid] = 1 + melds * 3 + pairs * 1.5 + exposed * 2 + nearWinBonus;
-    });
-    return scores;
-  }
-
   getPredictedWinRateText(playerId: string | null, lang: Lang = 'en'): string {
-    const scores = this.getPredictionScores();
-    const total = Object.values(scores).reduce((s, v) => s + v, 0);
-    if (!playerId || total <= 0 || !scores[playerId]) return lang === 'en' ? 'Pred win N/A' : '预测胜率 N/A';
-    const rate = ((scores[playerId] / total) * 100).toFixed(1);
-    return lang === 'en' ? `Pred win ${rate}%` : `预测胜率 ${rate}%`;
+    if (!playerId) return lang === 'en' ? 'N/A' : 'N/A';
+    const player = this.players[playerId];
+    if (!player) return lang === 'en' ? 'N/A' : 'N/A';
+    return player.getShantenText(lang);
   }
 
   syncRoomInfo(roomInfo: Record<string, Partial<RoomPlayer>>): void {
@@ -234,13 +226,11 @@ export class StateManager {
       if (!hasHands) {
         return { actionLine: '', stateLine: lang === 'en' ? `Table state synced. Waiting for deal.${remainingText}`.trim() : `牌桌状态已同步，等待下一局发牌。${remainingText}`.trim(), analysisPlayer: null };
       }
-      const scores = this.getPredictionScores();
-      const totalScore = Object.values(scores).reduce((s, v) => s + v, 0);
       const tableSummary = this.playerOrder.map((pid) => {
         const p = this.players[pid];
         if (!p) return null;
-        const rate = totalScore > 0 && scores[pid] ? ((scores[pid] / totalScore) * 100).toFixed(1) : null;
-        const odds = rate ? (lang === 'en' ? ` (${rate}%)` : `（${rate}%）`) : '';
+        const shanten = p.getShantenText(lang);
+        const odds = lang === 'en' ? ` (${shanten})` : `（${shanten}）`;
         return `${p.getCompactState(lang)}${odds}`;
       }).filter(Boolean).join(lang === 'en' ? '; ' : '；');
       if (!tableSummary) return { actionLine: '', stateLine: lang === 'en' ? 'Table state synced.' : '牌桌状态已同步。', analysisPlayer: null };

@@ -86,23 +86,42 @@ export default function Room() {
   const [verbose, setVerbose] = useState(true);
   const [analyze, setAnalyze] = useState(true);
   const [audio, setAudio] = useState(false);
+  const audioEnabledRef = useRef(false);
   const [lang, setLang] = useState('en');
 
   const wsRef = useRef<WebSocket | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const speechQueueRef = useRef<string[]>([]);
   const speechBusyRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const speak = useCallback((text: string) => {
     speechQueueRef.current.push(text);
-    const process = () => {
+    const process = async () => {
       if (speechBusyRef.current || !speechQueueRef.current.length) return;
       speechBusyRef.current = true;
-      const utter = new SpeechSynthesisUtterance(speechQueueRef.current.shift()!);
-      utter.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
-      utter.rate = 1.1;
-      utter.onend = utter.onerror = () => { speechBusyRef.current = false; process(); };
-      speechSynthesis.speak(utter);
+      const t = speechQueueRef.current.shift()!;
+      try {
+        const r = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: t, lang }),
+        });
+        if (!r.ok) throw new Error(`TTS ${r.status}`);
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          speechBusyRef.current = false;
+          process();
+        };
+        audio.play();
+      } catch {
+        speechBusyRef.current = false;
+        process();
+      }
     };
     process();
   }, [lang]);
@@ -131,9 +150,8 @@ export default function Room() {
           setAnalyze(msg.settings.analyze);
         }
         setMsgs((prev) => [...prev, msg]);
-        if (audio && msg.type === 'commentary') {
-          const text = [msg.actionLine, msg.analysis].filter(Boolean).join(' ');
-          if (text) speak(text);
+        if (audioEnabledRef.current && msg.type === 'commentary' && msg.analysis) {
+          speak(msg.analysis);
         }
       };
 
@@ -159,7 +177,15 @@ export default function Room() {
 
   const handleAnalyze = (v: boolean) => { setAnalyze(v); sendWs({ type: 'setAnalyze', analyze: v }); };
   const handleLang    = (v: boolean) => { const l = v ? 'zh' : 'en'; setLang(l); sendWs({ type: 'setLang', lang: l }); };
-  const handleAudio   = (v: boolean) => { setAudio(v); if (!v) speechSynthesis.cancel(); };
+  const handleAudio   = (v: boolean) => {
+    setAudio(v);
+    audioEnabledRef.current = v;
+    if (!v) {
+      audioRef.current?.pause();
+      speechQueueRef.current = [];
+      speechBusyRef.current = false;
+    }
+  };
 
   return (
     <div className="page-room">

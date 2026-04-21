@@ -13,6 +13,8 @@ if (!apiKey) {
   process.exit(1);
 }
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY ?? '';
+
 const GAME_HOST = process.env.GAME_HOST ?? '127.0.0.1';
 const GAME_PORT = parseInt(process.env.GAME_PORT ?? '8082');
 const GAME_HTTP = process.env.GAME_HTTP ?? 'http://127.0.0.1:4000';
@@ -62,6 +64,34 @@ app.post('/api/rooms/:roomId/start', (req, res) => {
 app.delete('/api/rooms/:roomId', (req, res) => {
   roomManager.stopRoom(req.params.roomId);
   res.json({ success: true });
+});
+
+// TTS proxy: keeps OpenAI key on the server
+app.post('/api/tts', async (req, res) => {
+  const { text, lang } = req.body as { text?: string; lang?: string };
+  if (!text || !OPENAI_API_KEY) {
+    res.status(400).json({ error: 'Missing text or OPENAI_API_KEY' });
+    return;
+  }
+  try {
+    const voice = lang === 'zh' ? 'shimmer' : 'alloy';
+    const r = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'tts-1', input: text, voice, response_format: 'mp3', speed: 1.1 }),
+    });
+    if (!r.ok) {
+      const err = await r.text();
+      res.status(r.status).json({ error: err });
+      return;
+    }
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'no-store');
+    const buf = await r.arrayBuffer();
+    res.end(Buffer.from(buf));
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
 });
 
 if (isProduction && existsSync(clientDist)) {
