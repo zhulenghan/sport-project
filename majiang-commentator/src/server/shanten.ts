@@ -5,7 +5,7 @@ import type { Lang } from './types';
 // Rules: 3 suits (man 11-19, bamboo 21-29, circles 31-39 after %50), no honor tiles.
 // Win condition: 1 pair (head) + 4 melds (triplet AAA or sequence ABC).
 
-export function getShantenNumber(handCards: number[]): number {
+export function getShantenNumber(handCards: number[], openMelds = 0): number {
   const counts: number[][] = [
     new Array(11).fill(0), // man: face 1-9
     new Array(11).fill(0), // bamboo
@@ -21,17 +21,19 @@ export function getShantenNumber(handCards: number[]): number {
     }
   }
 
-  let min = 8;
+  const targetMelds = 4 - openMelds;
+  const maxShanten = 8 - 2 * openMelds;
+  let min = maxShanten;
 
   // Without head
-  min = Math.min(min, evalHand(counts, false));
+  min = Math.min(min, evalHand(counts, false, targetMelds, openMelds));
 
   // Try each tile as the head (pair)
   for (let s = 0; s < 3; s++) {
     for (let f = 1; f <= 9; f++) {
       if (counts[s][f] >= 2) {
         counts[s][f] -= 2;
-        min = Math.min(min, evalHand(counts, true));
+        min = Math.min(min, evalHand(counts, true, targetMelds, openMelds));
         counts[s][f] += 2;
       }
     }
@@ -40,9 +42,7 @@ export function getShantenNumber(handCards: number[]): number {
   return min;
 }
 
-function evalHand(counts: number[][], hasHead: boolean): number {
-  // Get Pareto frontier of (mentsu, taatsu) for each suit independently,
-  // then combine across suits.
+function evalHand(counts: number[][], hasHead: boolean, targetMelds: number, openMelds: number): number {
   let combined: [number, number][] = [[0, 0]];
   for (const c of counts) {
     const frontier = suitSearch([...c], 1);
@@ -56,9 +56,10 @@ function evalHand(counts: number[][], hasHead: boolean): number {
   }
 
   const j = hasHead ? 1 : 0;
-  let best = 8;
+  const base = 8 - 2 * openMelds;
+  let best = base;
   for (const [m, t] of combined) {
-    const s = 8 - 2 * m - Math.min(t, 4 - m) - j;
+    const s = base - 2 * m - Math.min(t, targetMelds - m) - j;
     if (s < best) best = s;
   }
   return best;

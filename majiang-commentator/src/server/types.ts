@@ -43,6 +43,23 @@ export interface EventSegments {
   analysisPlayer: unknown;
 }
 
+export interface EventFact {
+  moveIndex: number;
+  type: string;
+  playerLabel: string;
+  description: string;
+  actorShantenAfter: number;
+  remainingTiles: number;
+}
+
+export interface GameSnapshot {
+  moveCount: number;
+  allMoves: EventFact[];
+  recentMoves: EventFact[];
+  narrativeSummary: string;
+  summaryUpToMove: number;
+}
+
 export interface PendingItem {
   event: GameEvent;
   actionLine: string;
@@ -51,10 +68,29 @@ export interface PendingItem {
   shouldAnalyze: boolean;
 }
 
+export interface PlayerDebugState {
+  id: string;
+  label: string;
+  handTiles: string[];
+  pengTiles: string[];
+  gangTiles: string[];
+  shantenText: string;
+}
+
+export interface DebugSnapshot {
+  moveCount: number;
+  allMoves: EventFact[];
+  recentMoves: EventFact[];
+  narrativeSummary: string;
+  summaryUpToMove: number;
+  playerStates: PlayerDebugState[];
+}
+
 export interface CommentaryMessage {
-  type: 'commentary' | 'system' | 'connected' | 'error';
+  type: 'commentary' | 'system' | 'connected' | 'error' | 'status';
   roomId: string;
   eventType?: string;
+  playerLabel?: string;
   actionLine?: string;
   analysis?: string;
   stateLine?: string;
@@ -62,6 +98,10 @@ export interface CommentaryMessage {
   timestamp: number;
   settings?: RoomSettings;
   rooms?: RoomInfo[];
+  // status message fields
+  isAnalyzing?: boolean;
+  isSummarizing?: boolean;
+  debugSnapshot?: DebugSnapshot;
 }
 
 export interface RoomInfo {

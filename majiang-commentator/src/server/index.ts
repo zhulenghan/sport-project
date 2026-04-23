@@ -78,7 +78,7 @@ app.post('/api/tts', async (req, res) => {
     const r = await fetch('https://api.openai.com/v1/audio/speech', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'tts-1', input: text, voice, response_format: 'mp3', speed: 1.1 }),
+      body: JSON.stringify({ model: 'tts-1', input: text, voice, response_format: 'mp3', speed: 1.3 }),
     });
     if (!r.ok) {
       const err = await r.text();

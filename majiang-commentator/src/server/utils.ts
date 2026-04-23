@@ -73,3 +73,30 @@ export function formatMeldGroup(cards: number[], lang: Lang = 'zh'): string {
   const names = cards.map((num) => cardName(num, lang));
   return `[${names.join(lang === 'en' ? ', ' : '、')}]`;
 }
+
+// Human-readable English tile name for LLM prompts: "2-dot", "1-char", "5-bam"
+const SUIT_READABLE: Record<number, string> = { 1: 'char', 2: 'bam', 3: 'dot' };
+export function readableCardName(num: number): string {
+  const normalized = num % 50;
+  const suit = Math.floor(normalized / 10);
+  const face = normalized % 10;
+  return `${face}-${SUIT_READABLE[suit] ?? '?'}`;
+}
+
+// Suit-grouped tile list for LLM prompts
+// EN: "1-char 2-char 3-char | 1-dot 5-dot | 2-bam"
+// ZH: "一万二万三万 | 一筒五筒 | 二条"
+export function tileListForPrompt(cards: number[], lang: Lang): string {
+  const sorted = sortCards(cards);
+  if (sorted.length === 0) return lang === 'en' ? '(none)' : '（无）';
+  const groups = new Map<number, number[]>();
+  sorted.forEach((num) => {
+    const suit = Math.floor((num % 50) / 10);
+    if (!groups.has(suit)) groups.set(suit, []);
+    groups.get(suit)!.push(num);
+  });
+  if (lang === 'zh') {
+    return Array.from(groups.values()).map((g) => g.map((c) => cardName(c, 'zh')).join('')).join(' | ');
+  }
+  return Array.from(groups.values()).map((g) => g.map(readableCardName).join(' ')).join(' | ');
+}

@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { GameClient } from './game-client';
 import { Context } from './context';
 import { Commentator } from './commentator';
+import { Summarizer } from './summarizer';
 import { StateManager } from './state-manager';
 import type { GameEvent, Lang, PendingItem, RoomInfo, RoomSettings, CommentaryMessage } from './types';
 
@@ -13,6 +14,7 @@ interface RoomSession {
   gameClient: GameClient;
   context: Context;
   commentator: Commentator;
+  summarizer: Summarizer;
   stateManager: StateManager;
   settings: RoomSettings;
   clients: Set<WebSocket>;
@@ -20,6 +22,8 @@ interface RoomSession {
   isConnected: boolean;
   pendingItems: PendingItem[];
   processing: boolean;
+  isAnalyzing: boolean;
+  isSummarizing: boolean;
   history: CommentaryMessage[];
 }
 
@@ -41,6 +45,7 @@ export class RoomManager {
     const resolvedSettings: RoomSettings = { lang: settings.lang ?? 'en', analyze: settings.analyze ?? true };
     const context = new Context();
     const commentator = new Commentator(this.apiKey);
+    const summarizer = new Summarizer(this.apiKey);
     const stateManager = new StateManager();
 
     const session: RoomSession = {
@@ -48,6 +53,7 @@ export class RoomManager {
       gameClient: null!,
       context,
       commentator,
+      summarizer,
       stateManager,
       settings: resolvedSettings,
       clients: new Set(),
@@ -55,6 +61,8 @@ export class RoomManager {
       isConnected: false,
       pendingItems: [],
       processing: false,
+      isAnalyzing: false,
+      isSummarizing: false,
       history: [],
     };
 
@@ -166,6 +174,14 @@ export class RoomManager {
       shouldAnalyze: settings.analyze && Boolean(actionLine),
     });
 
+    context.maybeRefreshSummary(
+      session.summarizer,
+      settings.lang,
+      () => { session.isSummarizing = true;  this.broadcastStatus(session); },
+      () => { session.isSummarizing = false; this.broadcastStatus(session); },
+    );
+
+    this.broadcastStatus(session);
     this.processQueue(session);
   }
 
@@ -178,14 +194,21 @@ export class RoomManager {
       try {
         let analysis = '';
         if (item.shouldAnalyze) {
+          session.isAnalyzing = true;
+          this.broadcastStatus(session);
           const raw = await session.commentator.commentate(item.prompt);
           analysis = session.context.finalizeAnalysis(raw, session.settings.lang);
+          session.isAnalyzing = false;
         }
 
+        const actingPlayer = item.event.playerId
+          ? session.stateManager.getPlayer(item.event.playerId)?.getLabel(session.settings.lang) ?? ''
+          : '';
         const msg: CommentaryMessage = {
           type: 'commentary',
           roomId: session.roomId,
           eventType: item.event.type,
+          playerLabel: actingPlayer,
           actionLine: item.actionLine,
           analysis,
           stateLine: item.stateLine,
@@ -197,12 +220,50 @@ export class RoomManager {
         if (session.history.length > HISTORY_SIZE) session.history.shift();
 
         this.broadcast(session, msg);
+        this.broadcastStatus(session);
       } catch (e) {
+        session.isAnalyzing = false;
+        this.broadcastStatus(session);
         console.error('[RoomManager] Queue error:', (e as Error).message);
       }
     }
 
     session.processing = false;
+  }
+
+  private broadcastStatus(session: RoomSession): void {
+    const snap = session.context.getSnapshot();
+    const { stateManager, settings } = session;
+    const playerStates = stateManager.playerOrder.map((pid) => {
+      const p = stateManager.players[pid];
+      return {
+        id: pid,
+        label: p.getLabel(settings.lang),
+        handTiles: p.getHandTileNames(settings.lang),
+        pengTiles: p.getPengTileNames(settings.lang),
+        gangTiles: p.getGangTileNames(settings.lang),
+        shantenText: p.getShantenText(settings.lang),
+      };
+    });
+    const msg: CommentaryMessage = {
+      type: 'status',
+      roomId: session.roomId,
+      isAnalyzing: session.isAnalyzing,
+      isSummarizing: session.isSummarizing,
+      debugSnapshot: {
+        moveCount: snap.moveCount,
+        allMoves: snap.allMoves,
+        recentMoves: snap.recentMoves,
+        narrativeSummary: snap.narrativeSummary,
+        summaryUpToMove: snap.summaryUpToMove,
+        playerStates,
+      },
+      timestamp: Date.now(),
+    };
+    const payload = JSON.stringify(msg);
+    session.clients.forEach((ws) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+    });
   }
 
   private broadcast(session: RoomSession, msg: CommentaryMessage): void {
